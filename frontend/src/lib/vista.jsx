@@ -36,8 +36,10 @@ export function VistaProvider({ children }) {
 
   const pedirIA = useCallback((texto) => setPeticionIA({ texto, id: Date.now() }), []);
   const consumirIA = useCallback(() => setPeticionIA(null), []);
+  // Recibe la OFERTA entera, no su id: se guarda una copia para poder listarla
+  // luego (ver lib/ofertasGuardadas).
   const alternarOfertaGuardada = useCallback(
-    (id) => setGuardadas(new Set(alternarGuardada(id))),
+    (oferta) => setGuardadas(new Set(alternarGuardada(oferta))),
     [],
   );
 

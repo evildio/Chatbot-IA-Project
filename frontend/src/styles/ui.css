@@ -15,9 +15,15 @@
 --------------------------------------------------------------------------- */
 .marco {
   position: relative;
-  width: 100%;
-  height: 100%;
+  /* Llena la ventana MENOS el margen. Se probo atarlo a 16:9 y en pantallas
+     anchas dejaba franjas negras enormes: aqui el negro es solo el filo que deja
+     ver las esquinas redondeadas. */
+  width: calc(100vw - 2 * var(--marco-gap));
+  height: var(--alto-app);
   overflow: hidden;
+  border-radius: var(--marco-radio);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   /* Halos azules del fondo: antes estaban en el body, ahora viven aqui dentro. */
   background:
     radial-gradient(circle at 34% 26%, rgba(16, 76, 142, 0.16), transparent 42%),
@@ -25,22 +31,11 @@
     var(--bg);
 }
 
+/* En escritorio hay sitio para un margen mas generoso. */
 @media (min-width: 861px) {
   :root {
     --marco-gap: 14px;
     --marco-radio: 22px;
-    /* El marco llena la ventana menos el margen. Se probo atarlo a 16:9, pero en
-       pantallas anchas dejaba franjas negras enormes a los lados: aqui el negro
-       es solo el filo que deja ver las esquinas redondeadas. */
-    --alto-app: calc(100dvh - 2 * var(--marco-gap));
-  }
-
-  .marco {
-    width: calc(100vw - 2 * var(--marco-gap));
-    height: var(--alto-app);
-    border-radius: var(--marco-radio);
-    border: 1px solid var(--border);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -741,14 +736,37 @@
 }
 
 .lienzo {
+  /* El padding vertical va en variables porque el scroll-snap necesita saberlo:
+     cada "pagina" mide el alto del scroller MENOS este padding. En movil los
+     valores cambian (la barra inferior ocupa abajo), y si el calculo usara los de
+     escritorio las paginas quedarian mas altas que la pantalla y el snap se
+     atascaria. */
+  --lienzo-pt: var(--sp-5);
+  --lienzo-pb: var(--sp-6);
+
   min-width: 0; /* sin esto, el carrusel desborda y aparece scroll horizontal */
   /* El scroll de la app vive aqui (el documento ya no scrollea). */
   min-height: 0;
   overflow-y: auto;
-  padding: var(--sp-5) var(--sp-4) var(--sp-6);
+
+  /* Barra OCULTA (el scroll sigue funcionando igual, con rueda y teclado).
+     En la home el recorrido lo marcan el snap y la nota "Haz scroll para ver mas
+     ofertas", y ademas quedaba pegada a la barra de la rejilla: dos barras
+     juntas contra el borde del marco. */
+  scrollbar-width: none;
+  padding: var(--lienzo-pt) var(--sp-4) var(--lienzo-pb);
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
+}
+
+.lienzo::-webkit-scrollbar { display: none; }
+
+/** Alto util de una "pagina" de la home: el scroller menos su padding. */
+.ofertas-pagina,
+.ofertas-blink,
+.ofertas__mas {
+  --alto-pagina: calc(var(--alto-app) - var(--lienzo-pt) - var(--lienzo-pb));
 }
 
 /* ---------------------------------------------------------------------------
@@ -1612,9 +1630,11 @@
   .lienzo { flex: 1; }
   .rail { display: none; }
 
-  /* El Asistente pasa a HOJA a pantalla completa (se abre desde la barra). */
+  /* El Asistente pasa a HOJA a pantalla completa (se abre desde la barra).
+     absolute y no fixed: asi queda DENTRO del marco (fixed se le escapa y taparia
+     tambien el filo negro con las esquinas redondeadas). */
   .asis-host {
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: var(--z-modal);
     height: var(--alto-app);
@@ -1644,7 +1664,8 @@
   /* Barra inferior con el Asistente en el centro (el protagonista). */
   .tabbar {
     display: flex;
-    position: fixed;
+    /* absolute (no fixed) por lo mismo que .asis-host: dentro del marco. */
+    position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
@@ -1684,8 +1705,12 @@
   .lienzo {
     margin-left: 0;
     /* Reservar el hueco de la barra inferior + aire extra: si no, la ultima
-       tarjeta queda pegada a la barra y se siente apretada. */
-    padding: var(--sp-4) 0 calc(112px + env(safe-area-inset-bottom, 0px)) var(--sp-2);
+       tarjeta queda pegada a la barra y se siente apretada. Va en la variable
+       para que el alto de pagina del scroll-snap lo tenga en cuenta. */
+    --lienzo-pt: var(--sp-4);
+    --lienzo-pb: calc(112px + env(safe-area-inset-bottom, 0px));
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
     gap: var(--sp-5);
   }
 
@@ -2512,6 +2537,32 @@
 .port-guardadas__vacio svg { flex: none; color: var(--text-3); opacity: 0.7; }
 .port-guardadas__vacio strong { color: var(--text-2); }
 
+/* --- Ofertas guardadas (en "Tu perfil") --- */
+/* Rejilla propia, no la de la home: alli las tarjetas viven en un contenedor con
+   scroll y alto fijo; aqui crecen a lo largo del panel. */
+.guardadas__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-2);
+}
+/* Sin tope, con pocas guardadas la tarjeta se estiraba a toda la fila y la
+   portada quedaba desproporcionada. */
+.guardadas__grid .card { max-width: 420px; }
+.guardadas__grid .card__visual { aspect-ratio: auto; height: clamp(150px, 15vw, 200px); }
+.guardadas__vacio {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--text-3);
+  font-size: var(--fs-5);
+}
+.guardadas__vacio svg { flex: none; color: var(--text-3); opacity: 0.7; }
+.guardadas__vacio strong { color: var(--text-2); }
+
 /* --- Etiquetas / iconos / chips comunes --- */
 .port-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .port-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); }
@@ -3181,30 +3232,28 @@
 }
 .ofertas__mas .carrusel__title { font-size: var(--fs-2); }
 
-@media (min-width: 861px) {
-  /* CLAVE del snap: un bloque MAS ALTO que la pantalla no se puede enganchar
-     (el navegador no fuerza el snap sobre el, y el scroll se quedaba a medio
-     camino entre las dos paginas). Asi que "Mas ofertas" mide una pantalla
-     justa y es su rejilla la que scrollea por dentro: sigue viendose todo, y
-     el enganche entre paginas vuelve a ser firme. */
-  .ofertas__mas {
-    height: calc(var(--alto-app) - var(--sp-5) - var(--sp-6));
-    justify-content: flex-start;
-  }
+/* CLAVE del snap: un bloque MAS ALTO que la pantalla no se puede enganchar (el
+   navegador no fuerza el snap sobre el, y el scroll se quedaba a medio camino
+   entre las dos paginas). Asi que "Mas ofertas" mide una pantalla justa y es su
+   rejilla la que scrollea por dentro: sigue viendose todo, y el enganche entre
+   paginas vuelve a ser firme. */
+.ofertas__mas {
+  height: var(--alto-pagina);
+  justify-content: flex-start;
+}
 
-  .ofertas__mas .ofertas__rejilla {
-    flex: 1;
-    min-height: 0; /* sin esto un hijo flex no encoge y no aparece el scroll */
-    overflow-y: auto;
-    align-content: start;
-    /* Las filas miden lo que pide su contenido y NO se comprimen. Sin esto, al
-       tener la rejilla un alto fijo, las filas se encogian (la tarjeta permite
-       encogerse con min-height:0) y su overflow:hidden recortaba el cuerpo: se
-       perdian chips, barra de afinidad y boton. Que sobre alto es problema del
-       scroll, no de las tarjetas. */
-    grid-auto-rows: max-content;
-    padding-bottom: var(--sp-2);
-  }
+.ofertas__mas .ofertas__rejilla {
+  flex: 1;
+  min-height: 0; /* sin esto un hijo flex no encoge y no aparece el scroll */
+  overflow-y: auto;
+  align-content: start;
+  /* Las filas miden lo que pide su contenido y NO se comprimen. Sin esto, al
+     tener la rejilla un alto fijo, las filas se encogian (la tarjeta permite
+     encogerse con min-height:0) y su overflow:hidden recortaba el cuerpo: se
+     perdian chips, barra de afinidad y boton. Que sobre alto es problema del
+     scroll, no de las tarjetas. */
+  grid-auto-rows: max-content;
+  padding-bottom: var(--sp-2);
 }
 
 /* Buscar ofertas */
@@ -3336,72 +3385,74 @@
   padding-right: var(--sp-4);
 }
 
-/* Escritorio: cada seccion de la home es una "pagina" con snap SUAVE. El scroller
-   es .lienzo (la columna de contenido, dentro del marco); solo .ofertas-pagina
-   tiene snap-align, asi que otras rutas no se ven afectadas. */
+/* Cada seccion de la home es una "pagina" con snap. El scroller es .lienzo (la
+ columna de contenido, dentro del marco); solo .ofertas-pagina tiene snap-align,
+ asi que otras rutas no se ven afectadas.
+
+ Aplica en TODOS los tamaños: el alto de pagina sale de --alto-pagina, que ya
+ descuenta el padding real del lienzo en cada breakpoint. */
+.lienzo {
+  /* mandatory: cada gesto ENGANCHA a la pagina, que es lo que da sentido a la
+     nota "Haz scroll para ver mas ofertas". Con proximity el enganche quedaba
+     flojo y parecia una pagina normal.
+     Para que mandatory no atrape, NINGUNA pagina puede ser mas alta que la
+     pantalla: "Mas ofertas" mide una pantalla justa y su rejilla scrollea por
+     dentro (ver .ofertas__mas). */
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+.ofertas-pagina {
+  /* Alto del scroller MENOS su padding vertical: si no, cada pagina desborda y
+     el snap se descuadra. */
+  min-height: var(--alto-pagina);
+  scroll-snap-align: start;
+  scroll-margin-top: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  /* `safe`: si el contenido NO cabe (la rejilla de "Mas ofertas" es mas alta que
+     una pagina), centrar lo desborda por ARRIBA y se monta sobre la pagina
+     anterior. Con safe, en ese caso se alinea al inicio en vez de centrar. */
+  justify-content: safe center;
+  gap: var(--sp-3);
+}
+
+/* --- Efecto "blink" en la primera pagina (scroll-driven animation) ----------
+   La seccion es solo el "riel": expone una scroll timeline con su posicion en
+   el viewport (view-timeline). Su contenido, .ofertas-blink, se queda pegado
+   (sticky) dentro de la columna y se funde con esa timeline: nitido y visible
+   cuando la seccion esta centrada, difuminado e invisible al salir. Como es
+   sticky (no fixed) NO tapa el rail ni el asistente. */
+.ofertas-pagina--blink {
+  /* la seccion deja de centrar: de eso se encarga el wrapper sticky */
+  display: block;
+  view-timeline: --ofertas-1 block;
+  /* Solo la PRIMERA pagina obliga a parar: un gesto rapido no se la salta. En
+     "Mas ofertas" seria un freno, porque ahi se scrollea de largo. */
+  scroll-snap-stop: always;
+}
+
+.ofertas-blink {
+  position: sticky;
+  top: 0;
+  min-height: var(--alto-pagina);
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  gap: var(--sp-3);
+  /* Sin fondo propio: se ve el mismo fondo ambiental que "Mas ofertas". El blur
+     y el fundido bastan para la transicion; no hace falta tapar el body. */
+  background: transparent;
+  animation: ofertas-blink ease-in-out both;
+  animation-timeline: --ofertas-1;
+}
+
+
+/* El scrim del modal no cubre la columna del Asistente: se queda visible y
+   usable mientras hay una oferta abierta, y el dialogo se centra sobre el resto
+   (rail + contenido). */
 @media (min-width: 861px) {
-  .lienzo {
-    /* mandatory: cada gesto ENGANCHA a la pagina, que es lo que da sentido a la
-       nota "Haz scroll para ver mas ofertas". Con proximity el enganche quedaba
-       flojo y parecia una pagina normal.
-       Para que mandatory no atrape, NINGUNA pagina puede ser mas alta que la
-       pantalla: "Mas ofertas" mide una pantalla justa y su rejilla scrollea por
-       dentro (ver .ofertas__mas). */
-    scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
-  }
-
-  .ofertas-pagina {
-    /* Alto del scroller MENOS su padding vertical: si no, cada pagina desborda y
-       el snap se descuadra. */
-    min-height: calc(var(--alto-app) - var(--sp-5) - var(--sp-6));
-    scroll-snap-align: start;
-    scroll-margin-top: var(--sp-3);
-    display: flex;
-    flex-direction: column;
-    /* `safe`: si el contenido NO cabe (la rejilla de "Mas ofertas" es mas alta que
-       una pagina), centrar lo desborda por ARRIBA y se monta sobre la pagina
-       anterior. Con safe, en ese caso se alinea al inicio en vez de centrar. */
-    justify-content: safe center;
-    gap: var(--sp-3);
-  }
-
-  /* --- Efecto "blink" en la primera pagina (scroll-driven animation) ----------
-     La seccion es solo el "riel": expone una scroll timeline con su posicion en
-     el viewport (view-timeline). Su contenido, .ofertas-blink, se queda pegado
-     (sticky) dentro de la columna y se funde con esa timeline: nitido y visible
-     cuando la seccion esta centrada, difuminado e invisible al salir. Como es
-     sticky (no fixed) NO tapa el rail ni el asistente. */
-  .ofertas-pagina--blink {
-    /* la seccion deja de centrar: de eso se encarga el wrapper sticky */
-    display: block;
-    view-timeline: --ofertas-1 block;
-    /* Solo la PRIMERA pagina obliga a parar: un gesto rapido no se la salta. En
-       "Mas ofertas" seria un freno, porque ahi se scrollea de largo. */
-    scroll-snap-stop: always;
-  }
-
-  .ofertas-blink {
-    position: sticky;
-    top: 0;
-    min-height: calc(var(--alto-app) - var(--sp-5) - var(--sp-6));
-    display: flex;
-    flex-direction: column;
-    justify-content: safe center;
-    gap: var(--sp-3);
-    /* Sin fondo propio: se ve el mismo fondo ambiental que "Mas ofertas". El blur
-       y el fundido bastan para la transicion; no hace falta tapar el body. */
-    background: transparent;
-    animation: ofertas-blink ease-in-out both;
-    animation-timeline: --ofertas-1;
-  }
-
-  /* El scrim del modal no cubre la columna del Asistente: se queda visible y
-     usable mientras hay una oferta abierta, y el dialogo se centra sobre el
-     resto (rail + contenido). */
-  .modal {
-    right: var(--asis-ancho);
-  }
+  .modal { right: var(--asis-ancho); }
 }
 
 /* Nitido y presente a mitad de recorrido (seccion centrada); difuminado, sin
@@ -3423,15 +3474,12 @@
 /* Movil: apilar la home y la busqueda; sin scroll horizontal ni snap. */
 @media (max-width: 860px) {
   .ofertas__cab { flex-direction: column; }
-  .ofertas__fila { grid-template-columns: 1fr; }
-  .ofertas-pagina { min-height: auto; scroll-snap-align: none; }
-  /* En movil el blink se apaga: sin sticky, sin animacion, sin fondo solido. */
-  .ofertas-blink {
-    position: static;
-    min-height: auto;
-    background: none;
-    animation: none;
-  }
+  /* Tantas columnas como quepan: en un movil estrecho sale 1, en uno apaisado o
+     en tablet salen 2 en vez de una sola tarjeta con medio ancho vacio al lado. */
+  .ofertas__fila { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  /* El snap y el blink funcionan igual que en escritorio (ver el bloque de
+     .ofertas-pagina): antes se apagaban aqui y la home se sentia distinta al
+     estrechar la ventana. */
   .ofertas__fila .card__visual { height: clamp(170px, 45vw, 240px); }
   .ofertas__cab,
   .ofertas__fila,
@@ -3442,6 +3490,23 @@
   .resultados__barra { padding-right: 0; }
   .ofertas__cab h1,
   .buscar__cab h1 { font-size: var(--fs-2); }
+
+  /* Cuando solo cabe UNA tarjeta por fila, estirarla a todo el ancho la deja
+     desproporcionada (portada enorme, texto perdido). Se le pone un tope y se
+     centra en la columna; con 2 por fila siguen ocupando su 1fr normal. */
+  .ofertas__fila,
+  .ofertas__rejilla,
+  .guardadas__grid { justify-items: center; }
+  .ofertas__fila .card,
+  .ofertas__rejilla .card,
+  .guardadas__grid .card {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  /* Las habilidades se ocultan en movil: en una columna estrecha la lista se
+     parte y solo cabe "+N", que no dice nada. Estan enteras en el detalle. */
+  .card__skills { display: none; }
 }
 
 /* --- Portafolio: pista de personalizacion, "por que ti" y esqueletos --- */
@@ -4188,9 +4253,26 @@
    cambia nada. Aqui solo se resuelve lo que en un telefono queda apretado.
    ========================================================================== */
 @media (max-width: 860px) {
+  /* La escala de escritorio se siente enorme en un telefono: un titulo de 48px y
+     separaciones de 64px se comen la pantalla. Se reescalan los TOKENS, no cada
+     regla, para que baje todo a la vez y siga siendo coherente.
+     El cuerpo (--fs-5) y los espacios pequeños NO se tocan: por debajo de 14px
+     el texto deja de leerse comodo y los objetivos tactiles se quedan cortos. */
+  :root {
+    --fs-1: 34px; /* 48 */
+    --fs-2: 26px; /* 32 */
+    --fs-3: 20px; /* 24 */
+    --fs-4: 17px; /* 18 */
+
+    --sp-3: 20px; /* 24 */
+    --sp-4: 24px; /* 32 */
+    --sp-5: 32px; /* 48 */
+    --sp-6: 40px; /* 64 */
+  }
+
   /* Aire simetrico: el lienzo tenia 0 a la derecha y los paneles llegaban a
      tocar el borde de la pantalla. */
-  .lienzo { padding-right: var(--sp-2); }
+  /* (el padding lateral ya se fija arriba, en el bloque del lienzo movil) */
 
   /* Cabeceras de seccion: con poco ancho, la pastilla ("Basado en N ofertas")
      estrujaba el titulo. Que baje debajo en vez de competir por el sitio. */
@@ -4236,5 +4318,5 @@
   }
 
   .tabbar { height: calc(64px + env(safe-area-inset-bottom, 0px)); }
-  .lienzo { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .lienzo { --lienzo-pb: calc(96px + env(safe-area-inset-bottom, 0px)); }
 }
