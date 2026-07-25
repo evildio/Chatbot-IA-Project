@@ -173,7 +173,7 @@ export default function JobModal({ job, onClose }) {
           <button
             type="button"
             className="perfil__iabtn modal__guardar"
-            onClick={() => alternarOfertaGuardada(job.id)}
+            onClick={() => alternarOfertaGuardada(job)}
             aria-pressed={guardadas.has(job.id)}
           >
             <Icon name="marcador" size={16} />

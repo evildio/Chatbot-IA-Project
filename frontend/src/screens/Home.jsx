@@ -15,34 +15,47 @@ export default function Home() {
   // Filas EXTRA de ofertas en la primera pagina. En pantallas altas la fila
   // principal deja mucho hueco; se rellena con las filas que quepan (ver efecto).
   const [filasExtra, setFilasExtra] = useState(0);
+  // Tarjetas que entran en UNA fila. En escritorio son 4 (destacada + 3); al
+  // estrechar se apilan, asi que la primera pagina muestra solo las que caben.
+  const [porFila, setPorFila] = useState(4);
   // La oferta abierta vive en el contexto compartido: asi el Asistente sabe
   // cual estas viendo. El modal se monta una sola vez en el Shell.
   const { setOfertaActiva, setContextoPantalla } = useVista();
 
   useEffect(() => {
     const calcular = () => {
-      // Como MUCHO una fila extra (2 filas en total): mas romperia el scroll-snap
-      // de la primera pagina. Y solo se añade si las 2 filas caben ENTERAS, para
-      // que no asome una tercera ni desborde la pagina.
-      if (window.innerWidth < 861) {
-        setFilasExtra(0);
-        return;
-      }
-
       // Se mide el SCROLLER real (.lienzo), no la ventana: la app vive dentro de
       // un marco mas pequeño, y medir con innerHeight metia una fila que no cabia
       // y hacia que la pagina 1 se solapara con "Mas ofertas".
       const lienzo = document.querySelector('.lienzo');
       let disponible = window.innerHeight;
+      let ancho = window.innerWidth;
       if (lienzo) {
         const cs = getComputedStyle(lienzo);
         disponible =
           lienzo.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+        ancho = lienzo.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       }
 
       const CHROME = 150; // cabecera de la seccion + nota "haz scroll"
       const FILA = 430; // alto real de una fila de tarjetas (imagen + cuerpo)
-      setFilasExtra(Math.floor((disponible - CHROME) / FILA) >= 2 ? 1 : 0);
+      const filasQueCaben = Math.floor((disponible - CHROME) / FILA);
+
+      if (window.innerWidth < 861) {
+        // Aqui la fila es auto-fit (minmax 240px): caben 1 o 2 por fila. La
+        // primera pagina muestra SOLO una fila; si mostrara las 4 de escritorio
+        // se apilarian, no cabrian en la pantalla y el snap se las saltaba sin
+        // dejarlas leer. El resto pasa a "Mas ofertas".
+        setFilasExtra(0);
+        setPorFila(Math.max(1, Math.min(2, Math.floor(ancho / 240))));
+        return;
+      }
+
+      // En escritorio la fila es fija: destacada + 3.
+      setPorFila(4);
+      // Como MUCHO una fila extra (2 filas en total): mas romperia el snap. Y
+      // solo si las 2 caben ENTERAS, para que no asome una tercera.
+      setFilasExtra(filasQueCaben >= 2 ? 1 : 0);
     };
 
     // Tras el primer pintado: antes, .lienzo aun no esta en el DOM.
@@ -78,7 +91,9 @@ export default function Home() {
 
   const cargando = recomendadas === null;
   const destacada = recomendadas?.[0];
-  const chicas = recomendadas?.slice(1, 4) ?? [];
+  // Solo las que caben en la fila (ver `porFila`): lo que no cabe se ve en
+  // "Mas ofertas" en vez de quedar fuera de pantalla.
+  const chicas = recomendadas?.slice(1, porFila) ?? [];
 
   // El Asistente sabe que ofertas tienes delante: asi "cual me conviene mas?" o
   // "hablame de la primera" tienen sentido sin que se las describas.
@@ -95,9 +110,9 @@ export default function Home() {
 
   // "Mas ofertas": el resto de recomendadas + exterior + locales, sin repetir.
   // Asi la home conserva el valor de exterior/local que el mock no muestra.
-  const vistos = new Set(recomendadas?.slice(0, 4).map((j) => j.id));
+  const vistos = new Set(recomendadas?.slice(0, porFila).map((j) => j.id));
   const mas = [];
-  for (const j of [...(recomendadas?.slice(4) ?? []), ...(exterior ?? []), ...(locales ?? [])]) {
+  for (const j of [...(recomendadas?.slice(porFila) ?? []), ...(exterior ?? []), ...(locales ?? [])]) {
     if (j && !vistos.has(j.id)) {
       vistos.add(j.id);
       mas.push(j);

@@ -748,11 +748,19 @@
   /* El scroll de la app vive aqui (el documento ya no scrollea). */
   min-height: 0;
   overflow-y: auto;
+
+  /* Barra OCULTA (el scroll sigue funcionando igual, con rueda y teclado).
+     En la home el recorrido lo marcan el snap y la nota "Haz scroll para ver mas
+     ofertas", y ademas quedaba pegada a la barra de la rejilla: dos barras
+     juntas contra el borde del marco. */
+  scrollbar-width: none;
   padding: var(--lienzo-pt) var(--sp-4) var(--lienzo-pb);
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
 }
+
+.lienzo::-webkit-scrollbar { display: none; }
 
 /** Alto util de una "pagina" de la home: el scroller menos su padding. */
 .ofertas-pagina,
@@ -2529,6 +2537,32 @@
 .port-guardadas__vacio svg { flex: none; color: var(--text-3); opacity: 0.7; }
 .port-guardadas__vacio strong { color: var(--text-2); }
 
+/* --- Ofertas guardadas (en "Tu perfil") --- */
+/* Rejilla propia, no la de la home: alli las tarjetas viven en un contenedor con
+   scroll y alto fijo; aqui crecen a lo largo del panel. */
+.guardadas__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-2);
+}
+/* Sin tope, con pocas guardadas la tarjeta se estiraba a toda la fila y la
+   portada quedaba desproporcionada. */
+.guardadas__grid .card { max-width: 420px; }
+.guardadas__grid .card__visual { aspect-ratio: auto; height: clamp(150px, 15vw, 200px); }
+.guardadas__vacio {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--text-3);
+  font-size: var(--fs-5);
+}
+.guardadas__vacio svg { flex: none; color: var(--text-3); opacity: 0.7; }
+.guardadas__vacio strong { color: var(--text-2); }
+
 /* --- Etiquetas / iconos / chips comunes --- */
 .port-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .port-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); }
@@ -3456,6 +3490,23 @@
   .resultados__barra { padding-right: 0; }
   .ofertas__cab h1,
   .buscar__cab h1 { font-size: var(--fs-2); }
+
+  /* Cuando solo cabe UNA tarjeta por fila, estirarla a todo el ancho la deja
+     desproporcionada (portada enorme, texto perdido). Se le pone un tope y se
+     centra en la columna; con 2 por fila siguen ocupando su 1fr normal. */
+  .ofertas__fila,
+  .ofertas__rejilla,
+  .guardadas__grid { justify-items: center; }
+  .ofertas__fila .card,
+  .ofertas__rejilla .card,
+  .guardadas__grid .card {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  /* Las habilidades se ocultan en movil: en una columna estrecha la lista se
+     parte y solo cabe "+N", que no dice nada. Estan enteras en el detalle. */
+  .card__skills { display: none; }
 }
 
 /* --- Portafolio: pista de personalizacion, "por que ti" y esqueletos --- */
@@ -4202,6 +4253,23 @@
    cambia nada. Aqui solo se resuelve lo que en un telefono queda apretado.
    ========================================================================== */
 @media (max-width: 860px) {
+  /* La escala de escritorio se siente enorme en un telefono: un titulo de 48px y
+     separaciones de 64px se comen la pantalla. Se reescalan los TOKENS, no cada
+     regla, para que baje todo a la vez y siga siendo coherente.
+     El cuerpo (--fs-5) y los espacios pequeños NO se tocan: por debajo de 14px
+     el texto deja de leerse comodo y los objetivos tactiles se quedan cortos. */
+  :root {
+    --fs-1: 34px; /* 48 */
+    --fs-2: 26px; /* 32 */
+    --fs-3: 20px; /* 24 */
+    --fs-4: 17px; /* 18 */
+
+    --sp-3: 20px; /* 24 */
+    --sp-4: 24px; /* 32 */
+    --sp-5: 32px; /* 48 */
+    --sp-6: 40px; /* 64 */
+  }
+
   /* Aire simetrico: el lienzo tenia 0 a la derecha y los paneles llegaban a
      tocar el borde de la pantalla. */
   /* (el padding lateral ya se fija arriba, en el bloque del lienzo movil) */

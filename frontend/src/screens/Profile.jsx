@@ -1,14 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useVista } from '../lib/vista';
+import { ofertasGuardadas } from '../lib/ofertasGuardadas';
 import Icon from '../components/Icon';
 import SkillIcon from '../components/SkillIcon';
+import JobCard from '../components/JobCard';
 import AvisosTelegram from '../components/AvisosTelegram';
 
 export default function Profile() {
   const { perfil, refrescar, salir } = useAuth();
-  const { pedirIA, setContextoPantalla } = useVista();
+  const { pedirIA, setContextoPantalla, guardadas, setOfertaActiva } = useVista();
+  // Se releen de disco cuando cambia el Set del contexto: asi la lista reacciona
+  // a guardar o quitar desde el modal sin recargar la pantalla.
+  const marcadas = useMemo(() => ofertasGuardadas(), [guardadas]);
   const inputArchivo = useRef(null);
 
   const [estado, setEstado] = useState(null); // { tipo: 'ok'|'error', texto }
@@ -21,13 +26,19 @@ export default function Profile() {
   // tambien responde bien a lo que escribas a mano. Se limpia al salir.
   useEffect(() => {
     const cv = perfil?.tieneCv ? `tiene un CV de ${perfil.cvLongitud} caracteres` : 'aun no ha subido su CV';
+    const marcadasTxt = marcadas.length
+      ? ` Tiene ${marcadas.length} ofertas guardadas: ${marcadas
+          .slice(0, 6)
+          .map((j) => `${j.title} en ${j.company}`)
+          .join('; ')}.`
+      : '';
     setContextoPantalla(
-      `El usuario esta en "Tu perfil". Sus habilidades: ${skills.join(', ') || '(ninguna)'}. ${cv}.`,
+      `El usuario esta en "Tu perfil". Sus habilidades: ${skills.join(', ') || '(ninguna)'}. ${cv}.${marcadasTxt}`,
     );
     return () => setContextoPantalla(null);
     // skills se deriva de perfil; con perfil basta para reaccionar a los cambios.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perfil, setContextoPantalla]);
+  }, [perfil, marcadas, setContextoPantalla]);
 
   // Estado del CV en texto, para reutilizar en los mensajes a la IA.
   const cvTexto = perfil?.tieneCv
@@ -105,6 +116,12 @@ export default function Profile() {
   const consejosCv = () =>
     pedirIA(
       `${cvTexto}. Mis habilidades: ${skillsTexto}. Dame consejos concretos para mejorar mi CV: que destacar, que reforzar y errores comunes a evitar.`,
+    );
+  const compararGuardadas = () =>
+    pedirIA(
+      `Estas son las ofertas que tengo guardadas: ${marcadas
+        .map((j) => `"${j.title}" en ${j.company}${j.location ? ` (${j.location})` : ''}`)
+        .join('; ')}. Mis habilidades: ${skillsTexto}. Comparalas: cual me conviene mas y por que, y que me falta para cada una.`,
     );
 
   return (
@@ -249,6 +266,48 @@ export default function Profile() {
       </section>
       </div>
       </div>
+
+      {/* Ofertas guardadas: mismo sitio que "Tus ideas guardadas" del portafolio
+          — lo que marcas vive en la pantalla de tus cosas. A ancho completo,
+          debajo de las dos columnas, porque son tarjetas y necesitan aire. */}
+      <section className="panel guardadas">
+        <header className="seccion__cab">
+          <span className="seccion__icono"><Icon name="marcador" size={20} /></span>
+          <div className="seccion__txt">
+            <h2 className="seccion__titulo">Ofertas guardadas</h2>
+            <p className="seccion__sub">
+              {marcadas.length
+                ? `${marcadas.length} ${marcadas.length === 1 ? 'oferta guardada' : 'ofertas guardadas'}. Se quedan en este equipo.`
+                : 'Las ofertas que marques con el marcador apareceran aqui.'}
+            </p>
+          </div>
+        </header>
+
+        {marcadas.length ? (
+          <>
+            <div className="guardadas__grid">
+              {marcadas.map((j) => (
+                <JobCard key={j.id} job={j} onOpen={setOfertaActiva} />
+              ))}
+            </div>
+            {marcadas.length > 1 && (
+              <div className="perfil__ia">
+                <button type="button" className="perfil__iabtn" onClick={compararGuardadas}>
+                  <Icon name="asistente" size={16} /> Comparar mis ofertas guardadas
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="guardadas__vacio">
+            <Icon name="marcador" size={22} />
+            <div>
+              <strong>Todavia no has guardado ninguna oferta.</strong>
+              <p>Abre una oferta y pulsa "Guardar oferta" para tenerla a mano.</p>
+            </div>
+          </div>
+        )}
+      </section>
     </>
   );
 }
